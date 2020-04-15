@@ -8,6 +8,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
 import java.security.Security;
 import java.util.concurrent.CompletableFuture;
@@ -15,6 +17,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -38,34 +42,28 @@ public class MainActivity extends AppCompatActivity {
         button.setOnClickListener(v -> {
             Editable text = editText.getText();
             int i = Integer.parseInt(text.toString());
-            getFactFuture(i).thenAccept(result -> {
-                runOnUiThread(() -> textView.setText(result));
-            }).exceptionally(throwable -> {
-                throwable.printStackTrace();
-                return null;
-            });
 
+            getFact(i);
         });
     }
 
-    private CompletableFuture<String> getFactFuture(int numbersesEntered) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return MainActivity.this.getFact(numbersesEntered);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    private String getFact(int i) throws IOException {
+    private void getFact(int i) {
         Request request = new Request.Builder()
                 .url("http://numbersapi.com/"+i)
                 .build();
 
-        try (Response response = client.newCall(request).execute()) {
-            return response.body().string();
-        }
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                String string = response.body().string();
+                runOnUiThread(() -> textView.setText(string));
+            }
+        });
     }
 
 
